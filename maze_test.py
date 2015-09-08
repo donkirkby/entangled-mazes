@@ -1,6 +1,6 @@
 import unittest
 
-from maze import Cell, MazePage, InvalidExitError
+from maze import Cell, MazePage, InvalidExitError, MultipleSolutionsError
     
 class DummyRandom(object):
     def __init__(self, choiceIndexes=None, randints=None):
@@ -93,9 +93,21 @@ class MazePageTest(unittest.TestCase):
         page2 = MazePage(name='2', size=(3, 2), start=(2, 1), goal=(2, 1))
         page2[2][1].addExit(0, 1)
         
-        moves = page1.solve(page2)
+        moves, sidetrack_depth = page1.solve(page2)
         
         self.assertEqual([(page1, 0, 1)], moves)
+        self.assertEqual(0, sidetrack_depth)
+
+    def testSolveWithSideTrack(self):
+        page1 = MazePage(name='1', size=(3, 2), start=(1, 0), goal=(1, 1))
+        page2 = MazePage(name='2', size=(3, 2), start=(2, 1), goal=(2, 1))
+        page2[2][1].addExit(0, 1)
+        page2[2][1].addExit(1, 0)
+        
+        moves, sidetrack_depth = page1.solve(page2)
+        
+        self.assertEqual([(page1, 0, 1)], moves)
+        self.assertEqual(1, sidetrack_depth)
 
     def testSolveTwice(self):
         page1 = MazePage(name='1', size=(3, 2), start=(1, 0), goal=(1, 1))
@@ -103,7 +115,7 @@ class MazePageTest(unittest.TestCase):
         page2[2][1].addExit(0, 1)
         
         page1.solve(page2) # ignore first result
-        moves = page1.solve(page2) # repeat the call
+        moves, _ = page1.solve(page2) # repeat the call
         
         self.assertEqual([(page1, 0, 1)], moves)
 
@@ -112,7 +124,7 @@ class MazePageTest(unittest.TestCase):
         page2 = MazePage(name='2', size=(3, 2), start=(2, 1), goal=(2, 1))
         page2[2][1].addExit(0, -1)
         
-        moves = page1.solve(page2)
+        moves, _ = page1.solve(page2)
         
         self.assertEqual(None, moves)
 
@@ -121,7 +133,7 @@ class MazePageTest(unittest.TestCase):
         page2 = MazePage(name='2', size=(3, 2), start=(2, 1), goal=(2, 1))
         page2[2][1].addExit(1, 0)
         
-        moves = page1.solve(page2)
+        moves, _ = page1.solve(page2)
         
         self.assertEqual(None, moves)
 
@@ -131,7 +143,7 @@ class MazePageTest(unittest.TestCase):
         page2[2][1].addExit(0, 1)
         page2[2][1].addExit(1, 0)
         
-        moves = page1.solve(page2)
+        moves, _ = page1.solve(page2)
         
         self.assertEqual([(page1, 1, 0)], moves)
 
@@ -141,7 +153,7 @@ class MazePageTest(unittest.TestCase):
         page2[2][1].addExit(1, 0)
         page1[2][0].addExit(0, -1)
         
-        moves = page1.solve(page2)
+        moves, _ = page1.solve(page2)
         
         self.assertEqual([(page1, 1, 0), (page2, 0, -1)], moves)
         
@@ -188,9 +200,22 @@ class MazePageTest(unittest.TestCase):
         page1[1][0].addExit(1, 0)
         page1[0][0].addExit(-1, 0)
         
-        moves = page1.solve(page2)
+        moves, _ = page1.solve(page2)
         
         self.assertEqual(None, moves)
+        
+    def testMultipleSolutionsError(self):
+        page1 = MazePage(name='1', size=(2, 2), start=(0, 0), goal=(1, 1))
+        page2 = MazePage(name='2', size=(2, 1), start=(0, 0), goal=(1, 0))
+        page2[0][0].addExit(0, 1)
+        page2[0][0].addExit(1, 0)
+        page1[1][0].addExit(1, 0)
+        page1[0][1].addExit(1, 0)
+        page2[1][0].addExit(0, 1)
+        page2[1][0].addExit(1, 0)
+        
+        with self.assertRaises(MultipleSolutionsError):
+            page1.solve(page2)
 
     def testFormat(self):
         page = MazePage(name='1', size=(3, 2), start=(0, 0), goal=(1, 1))

@@ -43,6 +43,9 @@ class MoveError(RuntimeError):
 class InvalidExitError(RuntimeError):
     pass
 
+class MultipleSolutionsError(RuntimeError):
+    pass
+
 class MazePage(object):
     def __init__(self, name=None, size=None, start=None, goal=None):
         self.name = name
@@ -87,26 +90,37 @@ class MazePage(object):
     def solve(self, partner, history=None):
         if history is None:
             history = []
+        solution = None
+        max_sidetrack_depth = 0
         for dx, dy in partner.getCurrentExits():
             try:
                 self.move(dx, dy)
                 try:
                     if self.pos == self.goal and partner.pos == partner.goal:
-                        return [(self, dx, dy)]
-                    
-                    state = (self, self.pos, partner, partner.pos)
-                    if state in history:
-                        return None
-                    history.append(state)
-                    moves = partner.solve(self, history)
-                    if moves is not None:
-                        moves.insert(0, (self, dx, dy))
-                        return moves
-                    history.pop()
+                        if solution:
+                            raise MultipleSolutionsError()
+                        solution = [(self, dx, dy)]
+                    else:
+                        state = (self, self.pos, partner, partner.pos)
+                        if state in history:
+                            continue
+                        history.append(state)
+                        moves, sidetrack_depth = partner.solve(self, history)
+                        max_sidetrack_depth = max(sidetrack_depth,
+                                                  max_sidetrack_depth)
+                        if moves is not None:
+                            if solution:
+                                raise MultipleSolutionsError()
+                            moves.insert(0, (self, dx, dy))
+                            solution = moves
+                        history.pop()
                 finally:
                     self.move(-dx, -dy)
             except MoveError:
                 pass
+        if solution is None:
+            max_sidetrack_depth += 1
+        return solution, max_sidetrack_depth
     
     def mutate(self, random):
         width = len(self.cells)
@@ -149,16 +163,22 @@ class MazePage(object):
         return display
 
 if __name__ == '__main__':
+    print 'Searching...'
     page1 = MazePage(name='Page 1', size=(3, 4), start=(0, 0), goal=(2, 3))
     page2 = MazePage(name='Page 2', size=(3, 4), start=(0, 1), goal=(2, 2))
     
     random = Random()
     moves = None
-    while moves is None or len(moves) > 10:
+    sidetrack_depth = 0
+    while moves is None or sidetrack_depth != 2:
         page1.mutate(random)
         page2.mutate(random)
-        moves = page1.solve(page2)
+        try:
+            moves, sidetrack_depth = page1.solve(page2)
+        except MultipleSolutionsError:
+            pass
     
+    print 'Found.'
     print page1.display()
     print page2.display()
     print moves
@@ -169,10 +189,10 @@ elif __name__ == '__live_coding__':
         page2 = MazePage(name='2', size=(3, 2), start=(2, 1), goal=(2, 1))
         page2[2][1].addExit(0, 1)
         
-        page1.solve(page2) # ignore first result
-        moves = page1.solve(page2) # repeat the call
+        moves, sidetrack_depth = page1.solve(page2)
         
         self.assertEqual([(page1, 0, 1)], moves)
+        self.assertEqual(0, sidetrack_depth)
     
     class DummyRandom(object):
         def __init__(self, choiceIndexes=None, randints=None):
