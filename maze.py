@@ -1,4 +1,5 @@
 from random import Random
+
 class Cell(object):
     EXITS = ((1, 0), (0, 1), (-1, 0), (0, -1))
     ARROWS = '>^<v'
@@ -49,7 +50,7 @@ class MultipleSolutionsError(RuntimeError):
 class MazePage(object):
     def __init__(self, name=None, size=None, start=None, goal=None):
         self.name = name
-        width, height = size or (0, 0)
+        width, height = self.size = size or (0, 0)
         self.pos = self.start = start
         self.goal = goal
         self.cells = []
@@ -73,8 +74,7 @@ class MazePage(object):
         x, y = self.pos
         x += dx
         y += dy
-        width = len(self.cells)
-        height = len(self.cells[0])
+        width, height = self.size
         if not (0 <= x < width and 0 <= y < height):
             raise MoveError('Invalid position ({}, {})'.format(x, y))
         self.pos = (x, y)
@@ -123,8 +123,7 @@ class MazePage(object):
         return solution, max_sidetrack_depth
     
     def mutate(self, random):
-        width = len(self.cells)
-        height = len(self.cells[0])
+        width, height = self.size
         x = random.randint(0, width-1)
         y = random.randint(0, height-1)
         e = random.choice(Cell.EXITS)
@@ -143,8 +142,7 @@ class MazePage(object):
         else:
             display = ''
         display += '\n'
-        width = len(self.cells)
-        height = len(self.cells[0])
+        width, height = self.size
         for i in range(height):
             y = height-i-1
             for x in range(width):
@@ -161,12 +159,10 @@ class MazePage(object):
                 display += cell_display
             display += '\n'
         return display
-
-if __name__ == '__main__':
-    print 'Searching...'
-    page1 = MazePage(name='Page 1', size=(3, 4), start=(0, 0), goal=(2, 3))
-    page2 = MazePage(name='Page 2', size=(3, 4), start=(0, 1), goal=(2, 2))
     
+def generateMazePair():
+    page1 = MazePage(name='Page 1', size=(4, 6), start=(0, 0), goal=(3, 5))
+    page2 = MazePage(name='Page 2', size=(4, 6), start=(0, 5), goal=(3, 0))
     random = Random()
     moves = None
     sidetrack_depth = 0
@@ -178,10 +174,17 @@ if __name__ == '__main__':
         except MultipleSolutionsError:
             pass
     
+    return page1, page2
+    
+
+if __name__ == '__main__':
+    print 'Searching...'
+    page1, page2 = generateMazePair()
+    
     print 'Found.'
     print page1.display()
     print page2.display()
-    print moves
+#     print moves
 elif __name__ == '__live_coding__':
     import unittest
     def testSomething(self):
