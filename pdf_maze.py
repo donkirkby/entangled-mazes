@@ -1,6 +1,8 @@
 import math
 from math import atan2, pi
 from random import Random
+import turtle
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.platypus.flowables import Flowable, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -149,4 +151,4 @@ if __name__ == '__main__':
 elif __name__ == '__live_coding__':
     page = generatePage()
     pdf = PdfMaze(page)
-    pdf.draw(__live_turtle__)  # @UndefinedVariable
+    pdf.draw(turtle)
